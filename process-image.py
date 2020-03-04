@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
 
+import os
+import sys
 import cv2
 import numpy as np
-import sys
 
 def process(alpha, blur_percentage=0.01):
     contrast = cv2.equalizeHist(alpha)
@@ -45,13 +46,24 @@ def create_icons(orig_img, contours):
         icons.append(icon)
     return icons
 
-path = sys.argv[1]
-image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-proc = process(image)
-uv_bbox_coords, contours = find_blobs(proc)
-icons = create_icons(image, contours)
+def save_data(icons, bbox_coords, path):
+    icon_path = os.path.join(path, "icons/")
+    if not os.path.exists(icon_path):
+        os.mkdir(icon_path)
 
-for i in icons:
-    cv2.imshow("daw", i)
-    cv2.waitKey(0)
-print(uv_bbox_coords)
+    for idx, img in enumerate(icons):
+        cv2.imwrite(f"{icon_path}/{idx}.png", img)
+
+    with open(f"{path}/coords.txt", "w+") as f:
+        f.write(str(bbox_coords))
+
+
+if __name__ == "__main__":
+    img_path = sys.argv[1]
+    out_path = sys.argv[2]
+
+    image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    proc = process(image)
+    uv_bbox_coords, contours = find_blobs(proc)
+    icons = create_icons(image, contours)
+    save_data(icons, uv_bbox_coords, out_path)

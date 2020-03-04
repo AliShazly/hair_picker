@@ -22,7 +22,8 @@ def transform_uvs(obj, new_center):
     transform_v = new_center[1] - old_center[1]
     cmds.polyEditUV(u=transform_u, v=transform_v)
 
-def allign_uv_to_bbox(obj, bbox_coords):
+def allign_uv_to_bbox(bbox_coords):
+    obj = cmds.ls(selection=True)[0]
     (xmin, ymax), (xmax, ymin) = bbox_coords # Assuming bbox coords are in opencv format
     bbox_width = xmax - xmin
     bbox_height = ymax - ymin
@@ -31,7 +32,3 @@ def allign_uv_to_bbox(obj, bbox_coords):
     square_unwrap(obj)
     scale_uvs(obj, bbox_width, bbox_height)
     transform_uvs(obj, bbox_center)
-
-    
-obj = cmds.ls(selection=True)[0]
-allign_uv_to_bbox(obj, ((0.1,0.8),(0.8,0.1)))

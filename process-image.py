@@ -17,6 +17,18 @@ def process(alpha, blur_percentage=0.01):
     _, thresh = cv2.threshold(blur,8,255,cv2.THRESH_BINARY)
     return thresh
 
+def resize_keep_aspect(img, size):
+    old_height, old_width = img.shape[:2]
+    if img.shape[0] >= size:
+        aspect_ratio = size / float(old_height)
+        dim = (int(old_width * aspect_ratio), size)
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_BILINEAR)
+    elif img.shape[1] >= size:
+        aspect_ratio = size / float(old_width)
+        dim = (size, int(old_height * aspect_ratio))
+        img = cv2.resize(img, dim, interpolation=cv2.INTER_BILINEAR)
+    return img
+
 
 def normalize_to_uv(coord, max_size):
     normalized = [val / max_size for val in coord]
@@ -38,13 +50,16 @@ def find_blobs(img):
 
     return uv_bbox_coords, contours
 
+
 def create_icons(orig_img, contours):
     icons = []
     for cnt in contours:
         (x,y,w,h) = cv2.boundingRect(cnt)
         icon = orig_img[y:y+h, x:x+w]
-        icons.append(icon)
+        icon_resized = resize_keep_aspect(icon, 256)
+        icons.append(icon_resized)
     return icons
+
 
 def save_data(icons, bbox_coords, path):
     icon_path = os.path.join(path, "icons/")

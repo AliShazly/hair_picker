@@ -52,6 +52,10 @@ def find_blobs(img):
         raise Exception("Provided texture is not square")
 
     contours, hier = cv2.findContours(img.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    rgb = cv2.cvtColor(img ,cv2.COLOR_GRAY2RGB)
+    contour_img = cv2.drawContours(rgb, contours, -1, (0,255,0), 4)
+    
     uv_bbox_coords = []
     for cnt in contours:
         (x,y,w,h) = cv2.boundingRect(cnt)
@@ -59,8 +63,7 @@ def find_blobs(img):
         bot_right = normalize_to_uv((x+w, y+h), image.shape[0])
         uv_bbox_coords.append((top_left, bot_right))
 
-    rgb = cv2.cvtColor(img ,cv2.COLOR_GRAY2RGB)
-    contour_img = cv2.drawContours(rgb, contours, -1, (0,255,0), 3)
+        cv2.rectangle(contour_img,(x,y),(x+w,y+h),(0,0,255),4)
 
     return uv_bbox_coords, contours, contour_img
 

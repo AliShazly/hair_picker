@@ -6,11 +6,14 @@ import os
 import sys
 from ast import literal_eval
 
-from align_uv import align_uv_to_bbox
+import align_uv
 
-
-############ Change script directory ############
-SCRIPT_DIR = r"C:\Users\NAME\Documents\maya\scripts\hair_picker"
+################################################################################################
+# If you are getting an error:
+#   change SCRIPT_DIR to the hair_picker folder in your maya scripts directory:
+#   C:/Users/<user_name>/Documents/maya/scripts/hair_picker  (no backslashes!)
+#################################################################################################
+SCRIPT_DIR = os.path.split(align_uv.__file__)[0]
 
 if not os.path.exists(SCRIPT_DIR):
     raise Exception("Change SCRIPT_DIR in the ui.py file")
@@ -103,7 +106,7 @@ class UI:
                     with pm.windows.horizontalLayout():
                         try:
                             for icon, coord, size in zip(self.icon_paths, self.uv_coords, self.icon_sizes):
-                                pm.iconTextButton(command=pm.windows.Callback(align_uv_to_bbox, coord),
+                                pm.iconTextButton(command=pm.windows.Callback(align_uv.align_uv_to_bbox, coord),
                                     style='iconAndTextCentered', image1=icon, w=size[0], h=size[1])
                         except AttributeError:
                             pass

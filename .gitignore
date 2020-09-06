@@ -2,3 +2,5 @@ icons/
 coords.txt
 .mayaSwatches
 *.lock
+*.swp
+.vscode

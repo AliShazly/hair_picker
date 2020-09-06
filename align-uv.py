@@ -32,4 +32,4 @@ def allign_uv_to_bbox(bbox_coords):
     square_unwrap(obj)
     scale_uvs(obj, bbox_width, bbox_height)
     transform_uvs(obj, bbox_center)
-    cmds.select(cl=True)
+    cmds.select(obj, r=True)

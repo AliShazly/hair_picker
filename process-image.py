@@ -5,6 +5,11 @@ import sys
 import cv2
 import numpy as np
 
+def _imshow(img, title=''):
+    cv2.imshow(f"{title}_win", img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
 def process(alpha, blur_percentage=0.01):
     contrast = cv2.equalizeHist(alpha)
 
@@ -17,17 +22,23 @@ def process(alpha, blur_percentage=0.01):
     _, thresh = cv2.threshold(blur,8,255,cv2.THRESH_BINARY)
     return thresh
 
-def resize_keep_aspect(img, size):
-    old_height, old_width = img.shape[:2]
-    if img.shape[0] >= size:
-        aspect_ratio = size / float(old_height)
-        dim = (int(old_width * aspect_ratio), size)
-        img = cv2.resize(img, dim, interpolation=cv2.INTER_BILINEAR)
-    elif img.shape[1] >= size:
-        aspect_ratio = size / float(old_width)
-        dim = (size, int(old_height * aspect_ratio))
-        img = cv2.resize(img, dim, interpolation=cv2.INTER_BILINEAR)
-    return img
+
+def resize_keep_aspect(image, width=None, height=None, inter=cv2.INTER_AREA):
+    dim = None
+    (h, w) = image.shape[:2]
+
+    if width is None and height is None:
+        return image
+
+    if width is None:
+        r = height / float(h)
+        dim = (int(w * r), height)
+    else:
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    resized = cv2.resize(image, dim, interpolation=inter)
+    return resized 
 
 
 def normalize_to_uv(coord, max_size):
@@ -56,15 +67,23 @@ def create_icons(orig_img, contours):
     for cnt in contours:
         (x,y,w,h) = cv2.boundingRect(cnt)
         icon = orig_img[y:y+h, x:x+w]
-        icon_resized = resize_keep_aspect(icon, 256)
+        if w > h:
+            icon_resized = resize_keep_aspect(icon, width=256)
+        else:
+            icon_resized = resize_keep_aspect(icon, height=256)
         icons.append(icon_resized)
     return icons
 
 
 def save_data(icons, bbox_coords, path):
     icon_path = os.path.join(path, "icons/")
-    if not os.path.exists(icon_path):
+    if os.path.exists(icon_path):
+        for f in os.listdir(icon_path):
+            full_path = os.path.join(icon_path, f)
+            os.remove(full_path)
+    else:
         os.mkdir(icon_path)
+
 
     for idx, img in enumerate(icons):
         cv2.imwrite(f"{icon_path}/{idx}.png", img)

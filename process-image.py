@@ -51,7 +51,7 @@ def find_blobs(img):
     if img.shape[0] != img.shape[1]:
         raise Exception("Provided texture is not square")
 
-    contours, hier = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hier = cv2.findContours(img.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     uv_bbox_coords = []
     for cnt in contours:
         (x,y,w,h) = cv2.boundingRect(cnt)
@@ -59,7 +59,10 @@ def find_blobs(img):
         bot_right = normalize_to_uv((x+w, y+h), image.shape[0])
         uv_bbox_coords.append((top_left, bot_right))
 
-    return uv_bbox_coords, contours
+    rgb = cv2.cvtColor(img ,cv2.COLOR_GRAY2RGB)
+    contour_img = cv2.drawContours(rgb, contours, -1, (0,255,0), 3)
+
+    return uv_bbox_coords, contours, contour_img
 
 
 def create_icons(orig_img, contours, height):
@@ -102,17 +105,17 @@ def save_data(icons, icon_sizes, bbox_coords, path):
 if __name__ == "__main__":
     img_path = sys.argv[1]
     out_path = sys.argv[2]
-    blur_percentage = int(sys.argv[3]) / 100
+    blur_percentage = float(sys.argv[3]) / 100
     icon_height = int(sys.argv[4])
     thresh_min = int(sys.argv[5])
     show_img = True if sys.argv[6] == "True" else False
 
     image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     proc = process(image, blur_percentage, thresh_min)
-
+    uv_bbox_coords, contours, contour_img = find_blobs(proc)
+    
     if show_img:
-        _imshow(proc)
-
-    uv_bbox_coords, contours = find_blobs(proc)
+        _imshow(resize_keep_aspect(contour_img, height=1024)[0])
+    
     icons, icon_sizes = create_icons(image, contours, icon_height)
     save_data(icons, icon_sizes, uv_bbox_coords, out_path)

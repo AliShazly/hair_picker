@@ -32,10 +32,9 @@ class UI:
             python_call = "python3"
 
         # Generating icons and uv coords from diffuse texture using external OpenCV script
-        print("{} {} {} {} {} {} {} {}".format(python_call, PROCESSING_SCRIPT_PATH, self.texture_path, SCRIPT_DIR, blur_percentage, icon_size, thresh_min, show_img))
         ret_code = subprocess.call("{} {} {} {} {} {} {} {}".format(python_call, PROCESSING_SCRIPT_PATH, self.texture_path, SCRIPT_DIR, blur_percentage, icon_size, thresh_min, show_img), shell=True)
         if ret_code == 1:
-            raise Exception("Processing script failed. Do you have numPy and openCV installed?")
+            raise Exception("Processing script failed. Make sure a square texture is used. Make sure OpenCV is installed.")
 
         with open(COORDS_PATH, "r") as f:
             uv_coords = literal_eval(f.read())
@@ -64,6 +63,8 @@ class UI:
 
     def _prompt_for_file(self):
         filename = pm.fileDialog2(fileMode=1, caption="Choose Texture")
+        if filename is None:
+            raise Exception("No file chosen.")
         self.texture_path = filename[0]
 
     def _create_ui_track_window(self, pos=None):
@@ -86,7 +87,7 @@ class UI:
 
             with pm.windows.frameLayout(collapsable=True, l="Params"):
                 with pm.verticalLayout():
-                    self.blur_slider = pm.intSliderGrp(min=0, max=100, value=1, field=True, label='Blur percentage (keep low)')
+                    self.blur_slider = pm.floatSliderGrp(min=0, max=100, value=0.9, field=True, label='Blur percentage (keep low)')
                     self.min_thresh_slider = pm.intSliderGrp(min=0, max=255, value=8, field=True, label='Minimum threshold value')
                     self.icon_size_field = pm.intFieldGrp(numberOfFields=1, label="Icon size", value1=256)
                     self.show_image_checkbox = pm.checkBox(label="Show processed image")

@@ -23,7 +23,10 @@ def transform_uvs(obj, new_center):
     cmds.polyEditUV(u=transform_u, v=transform_v)
 
 def allign_uv_to_bbox(bbox_coords):
-    obj = cmds.ls(selection=True)[0]
+    try:
+        obj = cmds.ls(selection=True)[0]
+    except IndexError:
+        raise Exception("Select a piece of geometry")
     (xmin, ymax), (xmax, ymin) = bbox_coords # Assuming bbox coords are in opencv format
     bbox_width = xmax - xmin
     bbox_height = ymax - ymin

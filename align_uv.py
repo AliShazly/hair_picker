@@ -22,7 +22,7 @@ def transform_uvs(obj, new_center):
     transform_v = new_center[1] - old_center[1]
     cmds.polyEditUV(u=transform_u, v=transform_v)
 
-def allign_uv_to_bbox(bbox_coords):
+def align_uv_to_bbox(bbox_coords):
     try:
         obj = cmds.ls(selection=True)[0]
     except IndexError:

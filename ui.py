@@ -1,15 +1,19 @@
 import pymel.core as pm
+import maya.cmds as cmds
 
 import subprocess
 import os
 import sys
 from ast import literal_eval
-# import allign-uv.py
+
+from align_uv import align_uv_to_bbox
 
 
-# Only change this
-#SCRIPT_DIR = "/home/ali/projects/hair-picker"
-SCRIPT_DIR = "G:/personalProjects/hair-picker/"
+############ Change script directory ############
+SCRIPT_DIR = r"C:\Users\NAME\Documents\maya\scripts\hair_picker"
+
+if not os.path.exists(SCRIPT_DIR):
+    raise Exception("Change SCRIPT_DIR in the ui.py file")
 
 PROCESSING_SCRIPT_PATH = os.path.join(SCRIPT_DIR, "process-image.py")
 ICONS_DIR = os.path.join(SCRIPT_DIR, "icons/")
@@ -99,9 +103,7 @@ class UI:
                     with pm.windows.horizontalLayout():
                         try:
                             for icon, coord, size in zip(self.icon_paths, self.uv_coords, self.icon_sizes):
-                                pm.iconTextButton(command=pm.windows.Callback(allign_uv_to_bbox, coord),
+                                pm.iconTextButton(command=pm.windows.Callback(align_uv_to_bbox, coord),
                                     style='iconAndTextCentered', image1=icon, w=size[0], h=size[1])
                         except AttributeError:
                             pass
-                                
-ui = UI()

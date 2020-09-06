@@ -12,3 +12,9 @@ A tool to slightly speed up your hair card workflow
     reload(hair_picker)
     ```
 
+## Download:
+https://github.com/AliShazly/hair_picker/releases/download/v1.0/hair_picker.zip
+
+---
+
+![Example](https://i.imgur.com/2SIvZLC.gif)

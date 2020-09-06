@@ -14,50 +14,93 @@ SCRIPT_DIR = "G:/personalProjects/hair-picker/"
 PROCESSING_SCRIPT_PATH = os.path.join(SCRIPT_DIR, "process-image.py")
 ICONS_DIR = os.path.join(SCRIPT_DIR, "icons/")
 COORDS_PATH = os.path.join(SCRIPT_DIR, "coords.txt")
+ICON_SIZE_PATH = os.path.join(ICONS_DIR, "icon_sizes.txt")
 
 class UI:
     def __init__(self):
-        self.uv_coords, self.icon_paths = self._refresh_icons()
-    
-    def _read_coords(self, file_path):
-        with open(file_path, "r") as f:
-            data = f.read()
-        return literal_eval(data)
+        self.current_window = self._create_ui_track_window()
+        self.texture_path = None
 
-    def _refresh_icons(self):
+    def _process_texture(self, blur_percentage=1, icon_size=256, thresh_min=8, show_img=False):
         
-        # Getting diffuse texture path
-        shape_node = cmds.ls(dag=True, o=True, s=True, sl=True)
-        shading_grps = cmds.listConnections(shape_node, type="shadingEngine")
-        shaders = cmds.ls(cmds.listConnections(shading_grps), materials=1)
-        file_node = cmds.listConnections("{}.color".format(shaders[0]), type="file")
-        img_path = cmds.getAttr("{}.fileTextureName".format(file_node[0]))
-        
-        
-        # Generating icons and uv coords from diffuse texture using external script
+        if self.texture_path is None:
+            self._prompt_for_file()
+
         if sys.platform == "win32":
             python_call = "python"
         else:
             python_call = "python3"
 
-        ret_code = subprocess.call("{} {} {} {}".format(python_call, PROCESSING_SCRIPT_PATH, img_path, SCRIPT_DIR), shell=True)
+        # Generating icons and uv coords from diffuse texture using external OpenCV script
+        print("{} {} {} {} {} {} {} {}".format(python_call, PROCESSING_SCRIPT_PATH, self.texture_path, SCRIPT_DIR, blur_percentage, icon_size, thresh_min, show_img))
+        ret_code = subprocess.call("{} {} {} {} {} {} {} {}".format(python_call, PROCESSING_SCRIPT_PATH, self.texture_path, SCRIPT_DIR, blur_percentage, icon_size, thresh_min, show_img), shell=True)
         if ret_code == 1:
             raise Exception("Processing script failed. Do you have numPy and openCV installed?")
 
-        uv_coords = self._read_coords(COORDS_PATH)
+        with open(COORDS_PATH, "r") as f:
+            uv_coords = literal_eval(f.read())
+            
+        with open(ICON_SIZE_PATH, "r") as f:
+            icon_sizes = literal_eval(f.read())
+        
         # Icons are named after the index of their respective uv coordinates
         icon_paths = [os.path.join(ICONS_DIR, "{}.png".format(i)) for i, _ in enumerate(uv_coords)]
-        return uv_coords, icon_paths
 
+        return uv_coords, icon_paths, icon_sizes
 
-    def _create_ui(self):
-        main_win = pm.window(title="Hair Picker", sizeable=True, wh=(512, 768))
-        with main_win:
-            with pm.scrollLayout(childResizable=True):
-                with pm.columnLayout():
-                    for icon, coord in zip(self.icon_paths, self.uv_coords):
-                        pm.iconTextButton(command=pm.windows.Callback(allign_uv_to_bbox, coord), style='iconAndTextCentered', image1=icon)
+    def _refresh_ui(self):
+        pos = self.main_win.getTopLeftCorner()
+        
+        blur_percentage = self.blur_slider.getValue()
+        thresh_min = self.min_thresh_slider.getValue()
+        icon_size = int(self.icon_size_field.getValue()[0])
+        show_img = self.show_image_checkbox.getValue()
+        self.uv_coords, self.icon_paths, self.icon_sizes = self._process_texture(blur_percentage, icon_size, thresh_min, show_img)
+        
+        new_window = self._create_ui_track_window(pos)
+        pm.deleteUI(self.current_window)
+        self.current_window = new_window
+        
 
+    def _prompt_for_file(self):
+        filename = pm.fileDialog2(fileMode=1, caption="Choose Texture")
+        self.texture_path = filename[0]
 
+    def _create_ui_track_window(self, pos=None):
+        # I have to keep track of the window ID because i run into problems when I delete and recreate the window using the PyMel object
+        existing_windows = set(cmds.lsUI(type = 'window'))
+        self._create_ui(pos)
+        new_windows = set(cmds.lsUI(type = 'window')) - existing_windows
+        current_window = list(new_windows)[0]
+        return current_window
+        
+
+    def _create_ui(self, pos=None):
+        
+        if pos:
+            self.main_win = pm.window(title="Hair Picker", sizeable=True, topLeftCorner=pos)
+        else:
+            self.main_win = pm.window(title="Hair Picker", sizeable=True)
+
+        with self.main_win:
+
+            with pm.windows.frameLayout(collapsable=True, l="Params"):
+                with pm.verticalLayout():
+                    self.blur_slider = pm.intSliderGrp(min=0, max=100, value=1, field=True, label='Blur percentage (keep low)')
+                    self.min_thresh_slider = pm.intSliderGrp(min=0, max=255, value=8, field=True, label='Minimum threshold value')
+                    self.icon_size_field = pm.intFieldGrp(numberOfFields=1, label="Icon size", value1=256)
+                    self.show_image_checkbox = pm.checkBox(label="Show processed image")
+                    self.prompt_file_button = pm.button(command = pm.windows.Callback(self._prompt_for_file), label="Choose Texture")
+                    self.refresh_ui_button = pm.button(command = pm.windows.Callback(self._refresh_ui), label="Process Texture")
+            
+            with pm.windows.frameLayout(collapsable=True, l="Blobs Found"):
+                with pm.autoLayout():
+                    with pm.windows.horizontalLayout():
+                        try:
+                            for icon, coord, size in zip(self.icon_paths, self.uv_coords, self.icon_sizes):
+                                pm.iconTextButton(command=pm.windows.Callback(allign_uv_to_bbox, coord),
+                                    style='iconAndTextCentered', image1=icon, w=size[0], h=size[1])
+                        except AttributeError:
+                            pass
+                                
 ui = UI()
-ui._create_ui()

@@ -10,16 +10,16 @@ def _imshow(img, title=''):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def process(alpha, blur_percentage=0.01):
-    contrast = cv2.equalizeHist(alpha)
+def process(image, blur_percentage=0.01, thresh_min=8):
+    contrast = cv2.equalizeHist(image)
 
-    blur_amt = int(alpha.shape[0] * blur_percentage)
+    blur_amt = int(image.shape[0] * blur_percentage)
     # Gaussian blur kernel must be odd
     if blur_amt % 2 == 0:
         blur_amt += 1
     blur = cv2.GaussianBlur(contrast, (blur_amt, blur_amt), 0)
 
-    _, thresh = cv2.threshold(blur,8,255,cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(blur, thresh_min, 255, cv2.THRESH_BINARY)
     return thresh
 
 
@@ -38,7 +38,7 @@ def resize_keep_aspect(image, width=None, height=None, inter=cv2.INTER_AREA):
         dim = (width, int(h * r))
 
     resized = cv2.resize(image, dim, interpolation=inter)
-    return resized 
+    return resized, dim
 
 
 def normalize_to_uv(coord, max_size):
@@ -62,20 +62,25 @@ def find_blobs(img):
     return uv_bbox_coords, contours
 
 
-def create_icons(orig_img, contours):
+def create_icons(orig_img, contours, height):
     icons = []
+    icon_sizes = []
     for cnt in contours:
         (x,y,w,h) = cv2.boundingRect(cnt)
         icon = orig_img[y:y+h, x:x+w]
+       
+        # Icon might be upside down, better than horizontal. 
         if w > h:
-            icon_resized = resize_keep_aspect(icon, width=256)
-        else:
-            icon_resized = resize_keep_aspect(icon, height=256)
+            icon = cv2.rotate(icon, cv2.ROTATE_90_CLOCKWISE)  
+        
+        icon_resized, dim = resize_keep_aspect(icon, height=height)
         icons.append(icon_resized)
-    return icons
+        icon_sizes.append(dim)
+
+    return icons, icon_sizes
 
 
-def save_data(icons, bbox_coords, path):
+def save_data(icons, icon_sizes, bbox_coords, path):
     icon_path = os.path.join(path, "icons/")
     if os.path.exists(icon_path):
         for f in os.listdir(icon_path):
@@ -84,9 +89,11 @@ def save_data(icons, bbox_coords, path):
     else:
         os.mkdir(icon_path)
 
-
     for idx, img in enumerate(icons):
         cv2.imwrite(f"{icon_path}/{idx}.png", img)
+
+    with open(f"{icon_path}/icon_sizes.txt", "w+") as f:
+        f.write(str(icon_sizes))
 
     with open(f"{path}/coords.txt", "w+") as f:
         f.write(str(bbox_coords))
@@ -95,9 +102,17 @@ def save_data(icons, bbox_coords, path):
 if __name__ == "__main__":
     img_path = sys.argv[1]
     out_path = sys.argv[2]
+    blur_percentage = int(sys.argv[3]) / 100
+    icon_height = int(sys.argv[4])
+    thresh_min = int(sys.argv[5])
+    show_img = True if sys.argv[6] == "True" else False
 
     image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-    proc = process(image)
+    proc = process(image, blur_percentage, thresh_min)
+
+    if show_img:
+        _imshow(proc)
+
     uv_bbox_coords, contours = find_blobs(proc)
-    icons = create_icons(image, contours)
-    save_data(icons, uv_bbox_coords, out_path)
+    icons, icon_sizes = create_icons(image, contours, icon_height)
+    save_data(icons, icon_sizes, uv_bbox_coords, out_path)

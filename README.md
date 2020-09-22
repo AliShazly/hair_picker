@@ -13,7 +13,7 @@ A tool to slightly speed up your hair card workflow
     ```
 
 ## Download:
-https://github.com/AliShazly/hair_picker/releases/download/v1.0/hair_picker.zip
+https://github.com/AliShazly/hair_picker/releases/download/v1.1/hair_picker.zip
 
 ---
 

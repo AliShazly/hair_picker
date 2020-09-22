@@ -5,6 +5,7 @@ import subprocess
 import os
 import sys
 from ast import literal_eval
+import getpass
 
 import align_uv
 
@@ -33,10 +34,17 @@ class UI:
         if self.texture_path is None:
             self._prompt_for_file()
 
-        if sys.platform == "win32":
-            python_call = "python"
-        else:
-            python_call = "python3"
+        try:
+            python_ver = subprocess.check_output(["python", "--version"])
+            if str(python_ver).split(" ")[1].split(".")[0] == "3":
+                python_call = "python"
+            elif subprocess.check_output(["python3", "--version"]):
+                python_call = "python3"
+        except subprocess.CalledProcessError:
+            if sys.platform.startswith("win"):
+                raise Exception("python3 executable not found. Please install python 3 from the Windows store")
+            else:
+                raise Exception("python3 executable not found.")
 
         # Generating icons and uv coords from diffuse texture using external OpenCV script
         ret_code = subprocess.call("{} {} {} {} {} {} {} {}".format(python_call, PROCESSING_SCRIPT_PATH, self.texture_path, SCRIPT_DIR, blur_percentage, icon_size, thresh_min, show_img), shell=True)

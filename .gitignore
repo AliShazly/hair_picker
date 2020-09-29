@@ -4,3 +4,4 @@ coords.txt
 *.lock
 *.swp
 .vscode
+*.jpg

@@ -2,15 +2,17 @@
 
 import os
 import sys
-import cv2
+import argparse
+
 import numpy as np
+import cv2
 
 def _imshow(img, title=''):
     cv2.imshow(f"{title}_win", img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def process(image, blur_percentage=0.01, thresh_min=8):
+def process(image, blur_percentage, thresh_min):
     contrast = cv2.equalizeHist(image)
 
     blur_amt = int(image.shape[0] * blur_percentage)
@@ -48,14 +50,11 @@ def normalize_to_uv(coord, max_size):
 
 
 def find_blobs(img):
-    if img.shape[0] != img.shape[1]:
-        raise Exception("Provided texture is not square")
+    # if img.shape[0] != img.shape[1]:
+    #     raise Exception("Provided texture is not square")
 
     contours, hier = cv2.findContours(img.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    rgb = cv2.cvtColor(img ,cv2.COLOR_GRAY2RGB)
-    contour_img = cv2.drawContours(rgb, contours, -1, (0,255,0), 4)
-    
+
     uv_bbox_coords = []
     for cnt in contours:
         (x,y,w,h) = cv2.boundingRect(cnt)
@@ -63,9 +62,59 @@ def find_blobs(img):
         bot_right = normalize_to_uv((x+w, y+h), image.shape[0])
         uv_bbox_coords.append((top_left, bot_right))
 
-        cv2.rectangle(contour_img,(x,y),(x+w,y+h),(0,0,255),4)
+    return uv_bbox_coords, contours
 
-    return uv_bbox_coords, contours, contour_img
+
+def draw_contours(img, contours):
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+    contour_img = cv2.drawContours(img, contours, -1, (0,255,0), 4)
+    for cnt in contours:
+        (x,y,w,h) = cv2.boundingRect(cnt)
+        cv2.rectangle(contour_img,(x,y),(x+w,y+h),(0,0,255),4)
+    return contour_img
+
+
+def auto_detect_blobs(raw_img, n_blobs, max_iter, blur=0.01, thresh_min=8):
+
+    thresh_img = process(raw_img, blur, thresh_min)
+    coords, contours = find_blobs(thresh_img)
+
+    def clamp(n, minn, maxn):
+        return max(min(maxn, n), minn)
+
+    c = 0
+    past_blur = 0
+    past_thresh = 0
+    while len(coords) != n_blobs:
+        if c > max_iter:
+            return None
+
+        if blur == past_blur and thresh_min == past_thresh:
+            return None
+
+        print("Processing... iteration #{}".format(c))
+
+        past_blur = blur
+        past_thresh = thresh_min
+
+        if len(coords) > n_blobs:
+            blur += 0.01
+            thresh_min -= 1
+
+        elif len(coords) < n_blobs:
+            blur -= 0.005
+            thresh_min += 2
+
+        blur = clamp(blur, 0, 0.08)
+        thresh_min = clamp(thresh_min, 0, 30)
+
+        thresh_img = process(raw_img, blur, thresh_min)
+        coords, contours = find_blobs(thresh_img)
+        c += 1
+
+    return coords, contours
 
 
 def create_icons(orig_img, contours, height):
@@ -74,11 +123,11 @@ def create_icons(orig_img, contours, height):
     for cnt in contours:
         (x,y,w,h) = cv2.boundingRect(cnt)
         icon = orig_img[y:y+h, x:x+w]
-       
-        # Icon might be upside down, better than horizontal. 
+
+        # Icon might be upside down, better than horizontal.
         if w > h:
-            icon = cv2.rotate(icon, cv2.ROTATE_90_CLOCKWISE)  
-        
+            icon = cv2.rotate(icon, cv2.ROTATE_90_CLOCKWISE)
+
         icon_resized, dim = resize_keep_aspect(icon, height=height)
         icons.append(icon_resized)
         icon_sizes.append(dim)
@@ -106,19 +155,26 @@ def save_data(icons, icon_sizes, bbox_coords, path):
 
 
 if __name__ == "__main__":
-    img_path = sys.argv[1]
-    out_path = sys.argv[2]
-    blur_percentage = float(sys.argv[3]) / 100
-    icon_height = int(sys.argv[4])
-    thresh_min = int(sys.argv[5])
-    show_img = True if sys.argv[6] == "True" else False
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--img_path", type=str)
+    parser.add_argument("-o", "--out_path", type=str)
+    parser.add_argument("-r", "--resolution", type=int)
+    parser.add_argument("-n", "--num_blobs", type=int)
+    parser.add_argument("-m", "--max_iter", type=int, default=50)
+    parser.add_argument("-s", "--show_img", action="store_true")
+    args = parser.parse_args()
 
-    image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-    proc = process(image, blur_percentage, thresh_min)
-    uv_bbox_coords, contours, contour_img = find_blobs(proc)
-    
-    if show_img:
+    image = cv2.imread(args.img_path, cv2.IMREAD_GRAYSCALE)
+    ret = auto_detect_blobs(image, args.num_blobs, args.max_iter)
+    if ret is None:
+        raise Exception("Auto detection failed.")
+    else:
+        uv_bbox_coords, contours = ret
+
+    if args.show_img:
+        contour_img = draw_contours(image, contours)
         _imshow(resize_keep_aspect(contour_img, height=1024)[0])
-    
-    icons, icon_sizes = create_icons(image, contours, icon_height)
-    save_data(icons, icon_sizes, uv_bbox_coords, out_path)
+
+    icons, icon_sizes = create_icons(image, contours, args.resolution)
+    save_data(icons, icon_sizes, uv_bbox_coords, args.out_path)
+

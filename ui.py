@@ -35,6 +35,7 @@ class UI:
         if self.texture_path is None:
             self._prompt_for_file()
 
+        # Assuming user at least has python3 installed
         if sys.platform.startswith("win"):
             python_call = "py -3"
         else:

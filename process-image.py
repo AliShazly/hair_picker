@@ -4,13 +4,45 @@ import os
 import sys
 import argparse
 
-import numpy as np
-import cv2
+try:
+    import numpy as np
+    import cv2
+except ModuleNotFoundError:
+    # Installing required packages to script directory to avoid polluting global namespace
+    # maybe a bad idea, can't tell.
+    deps_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dependencies")
+    if not os.path.isdir(deps_folder):
+        os.mkdir(deps_folder)
+    sys.path.insert(1, deps_folder)
+
+    if not os.path.isdir(os.path.join(deps_folder, "cv2")):
+        # Autodesk path stuff creates conflits with pip when trying to install packages
+        path_bak = sys.path
+        filter_ = ["autodesk", "bifrost", "maya"]
+        sys.path = [p for p in sys.path if not any(kw in p.lower() for kw in filter_)]
+
+        # Unsupported way of installing packages, but subprocess doesn't work from inside another subprocess
+        import pip
+        install = ["install", "--target", deps_folder, "numpy", "opencv_python"]
+
+        if hasattr(pip, "main"):
+            pip.main(install)
+        else:
+            pip._internal.main(install)
+
+        for p in path_bak:
+            if p not in sys.path:
+                sys.path.append(p)
+
+    import numpy as np
+    import cv2
+
 
 def _imshow(img, title=''):
     cv2.imshow(f"{title}_win", img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
 
 def process(image, blur_percentage, thresh_min):
     contrast = cv2.equalizeHist(image)

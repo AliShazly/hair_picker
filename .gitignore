@@ -5,3 +5,4 @@ coords.txt
 *.swp
 .vscode
 *.jpg
+dependencies/

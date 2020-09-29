@@ -114,11 +114,8 @@ class UI:
                     self.show_image_checkbox = pm.checkBox(label="Show processed image")
                     self.prompt_file_button = pm.button(command = pm.windows.Callback(self._prompt_for_file), label="Choose Texture")
                     self.refresh_ui_button = pm.button(command = pm.windows.Callback(self._refresh_ui), label="Process Texture")
-
-            with pm.windows.frameLayout(collapsable=True, l="UV Actions"):
-                with pm.verticalLayout():
-                    self.rotate_positive_button = pm.button(command=pm.windows.Callback(align_uv.rotate_keep_bbox, 90), label="Rotate Clockwise")
-                    self.rotate_negative_button = pm.button(command=pm.windows.Callback(align_uv.rotate_keep_bbox, -90), label="Rotate Counter-clockwise")
+                    self.rotate_positive_button = pm.button(command=pm.windows.Callback(align_uv.rotate_keep_bbox, 90), label="Rotate UV Clockwise")
+                    self.rotate_negative_button = pm.button(command=pm.windows.Callback(align_uv.rotate_keep_bbox, -90), label="Rotate UV Counter-clockwise")
 
 
             with pm.windows.frameLayout(collapsable=True, l="Blobs Found"):
